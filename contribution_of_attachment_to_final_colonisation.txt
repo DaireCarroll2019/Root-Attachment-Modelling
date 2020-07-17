@@ -1,0 +1,164 @@
+#my.data = read.csv("", sep = ",", header = TRUE)
+#attach(my.data)
+#head(my.data)
+
+#script for calculating rate of attachment
+
+library(dplyr)
+library(tidyverse)
+library(growthrates)
+library(deSolve)
+library(lattice)
+library(ggplot2)
+library(gridExtra)
+library(cowplot)	#load packages
+
+rm(list=ls())
+graphics.off()  
+detach(my.data)
+
+#=========================
+
+
+Kc = 8.855974
+y0c = 0.007333
+muc = 0.184677
+Kp = Kc
+y0p = 0.02508862
+mup = 0.09949397	#prameters from growthrates
+
+time = c(1:96)
+
+Yc = function(time){
+Kc/(1+(Kc/y0c-1)*exp(-muc*time))
+}						#logistic equation for total colonisation
+
+Yc1 = expression(
+Kc/(1+(Kc/y0c-1)*exp(-muc*time))
+)
+
+D(Yc1,'time') #differentiate it
+
+Rc = function(time){
+Kc * ((Kc/y0c - 1) * (exp(-muc * time) * muc))/(1 + (Kc/y0c - 
+    1) * exp(-muc * time))^2
+}						#growth rate for total colonisation
+
+points = Rc(time)
+
+plot(time,points)
+
+#=======================
+
+Yp = function(time){
+Kp/(1+(Kp/y0p-1)*exp(-mup*time))
+}						#logistic equation for proliferation
+
+Yp1 = expression(
+Kp/(1+(Kp/y0p-1)*exp(-mup*time))
+)
+
+D(Yp1,'time') #differentiate it
+
+Rp = function(time){
+Kp * ((Kp/y0p - 1) * (exp(-mup * time) * mup))/(1 + (Kp/y0p - 
+    1) * exp(-mup * time))^2
+}						#growth rate for proliferation
+
+pointsp = Rp(time)
+
+plot(time,pointsp)
+
+summary(pointsp)
+summary(points)
+
+#=======================
+
+Rcont = function(time){					
+mup*(Yc(time)*(Kp-Yc(time))/Kp)
+}			#substitute y0 for Yc 
+
+pointscont = Rcont(time)
+
+summary(pointscont)
+
+Ra = function(time){
+Rc(time) - Rcont(time)
+}	
+
+
+#======================
+
+pt = function(time){
+	Ra(time)/Kc*(
+		mup*Yc(time)*(
+			Kp-Yc(time)
+		)/Kp
+		)
+}
+
+points  = pt(time)
+
+plot(time,points)
+
+
+a = function(time){
+	Ra(time)/Kc
+}
+
+first_part = a(time)
+
+#========
+
+Rpc = function(time){					
+mup*(Yc(time)*(Kp-Yc(time))/Kp)
+}
+
+integrate(Rpc,lower=0,upper=96)
+integrate(Rpc,lower=1,upper=96)
+
+int.values <- vector("numeric",96) 
+
+for(i in 0:96){
+intval = integrate(Rpc,lower=i,upper=96) 
+str(intval)
+int.values [i] = (intval$value)
+}
+
+int.values
+
+vals = first_part*int.values
+
+plot(time,first_part*int.values)
+
+#=========================
+
+frame = data.frame(vals,time)
+
+#=========================
+
+cleanup_grid = theme(panel.border = element_blank(),
+	panel.grid.major = element_blank(),
+		panel.grid.minor = element_blank(),
+			panel.background = element_blank(),
+				axis.line = element_line(color = "black"),
+					)
+		
+cleanup_text = theme(axis.text.x = element_text(color = "black", size = 12, angle = 0, hjust = .5, vjust = .5, face = "plain"),
+	axis.text.y = element_text(color = "black", size = 12, angle = 0, hjust = 0.8, vjust = 0.4, face = "plain"),  
+		axis.title.x = element_text(color = "black", size = 20, angle = 0, hjust = .5, vjust = 0, face = "plain"),
+        		axis.title.y = element_text(color = "black", size = 20, angle = 90, hjust = .5, vjust = .5, face = "plain"))			
+
+#===================
+
+p <- ggplot(frame, aes(time)) +		
+	geom_line(aes(y= vals), size = 1.3, col = "Black") +			
+		labs(x="Time (Hours)", y=expression("Proportion of"~italic(K[c]))) +
+
+			cleanup_grid +
+			cleanup_text +
+				scale_x_continuous(breaks = round(seq(0, 100, by = 10),1)) +
+				
+					theme(legend.text=element_text(size=12)) +
+					theme(legend.title=element_text(size=12)) 
+

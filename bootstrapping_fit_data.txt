@@ -1,0 +1,102 @@
+#package it up so you have mod and data in the function and you just swap them around at the top as you need
+
+library(tidyverse)
+library(growthrates)
+
+my.data = read.csv("file_name.csv", sep = ",", header = TRUE) #rename to relevant file name and loaction
+attach(my.data)
+head(my.data)
+
+times = times
+
+y_data = y_data #modify to relevant time and y data values
+
+logistic = function(time, y0,mumax, K){
+	(K * y0) / (y0 + (K - y0) * exp(-mumax * time))
+}
+
+decline = function(time,a,b,c){
+	a+b*(1-exp(-c/Times))
+}
+
+decline1 = function(time, parms){
+	with(as.list(parms), {
+	y = a+b*(1-exp(-c/time))
+return(as.matrix(data.frame(time=my.data$times, y=my.data$y_data)))
+})
+}
+
+mygrowthmodel <- growthmodel(decline, c("a", "b", "c"))
+
+my.data = my.data %>% drop_na(y_data)
+
+nls_start = nls (my.data$y_data~
+ 	 function(my.data$times, a,b, c), #choose your function, logistic or decline
+			start = list(a=-5.151, b=12.272, c=633.798),
+				trace = T, data = my.data,control = list(maxiter = (10^9), minFactor = 0)
+)
+
+Model_parms = (as.numeric(as.vector(coef(nls_start))))
+
+Model_data = function(my.data$times,Model_parms[1],Model_parms[2],Model_parms[3])
+#use the originall fitting tool
+#=======================
+
+BT = 1000 # number of bootstraps
+
+z = matrix(ncol = length(coef(nls_start)), nrow  = (0))
+
+for(j in 1:BT){
+
+	choice = floor(runif(length(my.data$y_data), min = 1, max = length(my.data$y_data)))
+
+	y = matrix(ncol = ncol(my.data), nrow  = (0))
+
+	for( i in choice){
+		x = as.numeric(as.vector(my.data[i,]))
+		y <- rbind.data.frame(y, (x))
+
+	}
+
+colnames(y)<-colnames(my.data)
+attach(y)
+
+p     <- c(a =Model_parms[1], b = Model_parms[2],c = Model_parms[3])
+lower <- c(a =, b =,   c =) #reasonable limit to parameters
+upper <- c(a =, b =,   c =) #reasonable limit to parameters
+
+nls1 <- fit_growthmodel(FUN = function, p = p, y$times, y$y_data, #choose function, logistic or decline1
+                        lower = lower, upper = upper)
+
+z <- rbind.data.frame(z, (as.numeric(as.vector(coef(nls1)))))
+
+print(z)
+
+}
+
+new_fits = matrix(ncol = length(my.data$times), nrow  = 0)
+for(k in 0:BT){
+	fits = function(my.data$times, z[k,1],z[k,2],z[k,3]) # choose function logistic or decline
+	new_fits <- rbind.data.frame(new_fits, (fits))
+}
+
+#this all works
+
+#sum each column, add them up, square them and divide by BT
+
+x_vals = matrix(ncol = 0, nrow  = BT)
+for(m in 1:nrow(new_fits)){
+	x = Model_data - as.numeric(as.vector(new_fits[m,]))
+	x = (x)^2
+	x = sum(x)
+	x = x/length(new_fits[l,])
+	x = sqrt(x)
+	x_vals = rbind.data.frame(x_vals, (x))
+	print(x_vals)
+}
+
+x_vals = x_vals %>% drop_na(x_vals)
+final_error = sum(x_vals)/BT
+print(final_error)
+
+#============================

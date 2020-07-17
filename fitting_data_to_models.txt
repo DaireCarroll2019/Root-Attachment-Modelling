@@ -1,0 +1,178 @@
+library(dplyr)
+library(growthrates)
+library(tidyverse)
+#=======
+
+my.data = read.csv("file_name.csv", sep = ",", header = TRUE) #rename to relevant file name and loaction
+attach(my.data)
+head(my.data)
+
+time = time
+
+y_data = y_data #modify to relevant time and y data values
+
+#=======
+#Baranyi
+
+p     <- c(y0 =, mumax =,K =,h0 =) #best guess for the model parameters 
+lower <- c(y0 =, mumax =,K =,h0 =) #reasonable lower limits
+upper <- c(y0 =, mumax =,K =,h0 =) #reasonable upper limits
+
+mod1 <- fit_growthmodel(FUN = grow_baranyi, p = p, my.data$times, my.data$y_data, 
+                        lower = lower, upper = upper)
+
+
+mod1_coefs <- rbind.data.frame(z, (as.numeric(as.vector(coef(mod1)))))
+
+mod1_coefs
+
+baranyi = function(time, y0, mumax, K, h0){
+ (log(y0) + mumax * 
+		(time + 1/mumax * log(exp(-mumax * time) + exp(-h0) - exp(-mumax * time - h0))
+			) - log(1 + (exp(mumax * (time + 1/mumax * log(exp(-mumax * time) + exp(-h0) - 
+            		exp(-mumax * time - h0)))) - 1)/exp(log(K) - log(y0))))
+}
+
+baranyi.analysis = nls (y_data~
+	baranyi(time, y0, mumax, K, h0),
+					data = my.data, 
+						start = list(y0 = mod1_coefs[1], mumax = mod1_coefs[2], K = mod1_coefs[3], h0 = mod1_coefs[4]),
+							trace = T
+)
+
+summary(baranyi.analysis)
+
+AIC(baranyi.analysis)
+
+#===========================================
+#richards
+
+p     <- c(y0 =, mumax = ,K = , beta = )#best guess for the model parameters 
+lower <- c(y0 =, mumax = ,K = , beta = )#reasonable lower limits
+upper <- c(y0 =, mumax = ,K = , beta = )#reasonable upper limits
+
+mod2 <- fit_growthmodel(FUN = grow_richards, p = p, my.data$times, my.data$y_data, 
+                        lower = lower, upper = upper)
+
+mod2_coefs <- rbind.data.frame(z, (as.numeric(as.vector(coef(mod2)))))
+
+mod2_coefs
+
+richards = function(time, y0, mumax, K, beta){
+	K * (1 - exp(-beta * mumax * time) * (1 - (y0/K)^-beta))^(-1/beta)
+}
+
+
+richards.analysis = nls (y_data~
+	richards(time, y0, mumax, K, beta),
+					data = my.data, 
+						start = list(y0 = mod2_coefs[1], mumax = mod2_coefs[2], K = mod2_coefs[3], beta = mod2_coefs[4]),
+							trace = T
+)
+
+summary(richards.analysis)
+
+AIC(richards.analysis)
+
+#===========================================
+#gomperts
+p     <- c(y0=,mumax =,K =)#best guess for the model parameters 
+lower <- c(y0=,mumax =,K =)#reasonable lower limits
+upper <- c(y0=,mumax =,K =)#reasonable upper limits
+
+mod3 <- fit_growthmodel(FUN = grow_gompertz, p = p, my.data$times, my.data$y_data, 
+                        lower = lower, upper = upper)
+
+mod3_coefs <- rbind.data.frame(z, (as.numeric(as.vector(coef(mod3)))))
+
+mod3_coefs
+
+gompertz=function(tmie, y0, mumax, K){ 
+	K * exp(log(y0/K) * exp(-mumax * time))
+}
+
+
+gompertz.analysis = nls (y_data~
+
+ 	 gompertz(time, y0, mumax, K), 
+
+			start = list(y0 = mod4_coefs[1], mumax = mod4_coefs[2], K = mod4_coefs[3]),
+				trace = T
+)
+
+summary(gompertz.analysis)
+
+AIC(gompertz.analysis)
+
+#===========================================
+#logistic
+
+p     <- c(y0=,mumax =,K =)#best guess for the model parameters 
+lower <- c(y0=,mumax =,K =)#reasonable lower limits
+upper <- c(y0=,mumax =,K =)#reasonable upper limits
+
+mod4 <- fit_growthmodel(FUN = grow_logistic, p = p, my.data$times, my.data$y_data, 
+                        lower = lower, upper = upper)
+
+mod4_coefs <- rbind.data.frame(z, (as.numeric(as.vector(coef(mod4)))))
+
+mod4_coefs
+
+logistic = function(time, y0,mumax, K){
+	(K * y0) / (y0 + (K - y0) * exp(-mumax * time))
+}
+
+logistic.analysis = nls (y_data~
+
+ 	 logistic(time, y0,mumax, K), 
+
+			start = list(y0 = mod4_coefs[1], mumax = mod4_coefs[2], K = mod4_coefs[3]),
+				trace = T
+)
+
+summary(logistic.analysis)
+
+AIC(logistic.analysis)
+
+#===========================================
+#logistic decline model
+
+curve_decline = function(time, parms){
+	with(as.list(parms), {
+	y = a+b*(1-exp(-c/time))
+return(as.matrix(data.frame(time=my.data$time, y=my.data$y_data)))
+})
+}
+
+mygrowthmodel <- growthmodel(decline, c("a", "b", "c"))
+
+p     <- c(a =, b = ,c =)#best guess for the model parameters 
+lower <- c(a = , b = , c = )#reasonable lower limits
+upper <- c(a = , b =, c =)#reasonable upper limits
+
+mod5 <- fit_growthmodel(FUN = curve_decline, p = p, my.data$times, my.data$y_data, # replace function with relevant model, logistic or decline1
+                        lower = lower, upper = upper)
+
+mod5_coefs <- rbind.data.frame(z, (as.numeric(as.vector(coef(mod5)))))
+
+mod5_coef
+
+curve_decline1=function(time,a,b,c){
+	a+b*(1-exp(-c/time))
+}
+
+curve.analysis = nls (y_data~
+
+ 	 curve_decline1(time, a, b, c), 
+
+			start = list(a = mod5_coefs[1], b = mod5_coefs[1], c = mod5_coefs[1]),
+				trace = T
+)
+
+summary(curve.analysis)
+
+AIC(curve.analysis)
+
+#=
+
+
